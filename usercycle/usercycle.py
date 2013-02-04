@@ -66,7 +66,7 @@ class UsercycleAPI(object):
             self.access_token = access_token
         else:
             self.access_token = USERCYCLE_ACCESS_TOKEN
-    
+
     def signup(self,
                identity,
                occurred_at=None,
@@ -84,7 +84,7 @@ class UsercycleAPI(object):
                search_terms=None,
                **kwargs):
         action = "signed_up"
-        
+
         if first_name: kwargs['properties[first_name]'] = first_name
         if last_name: kwargs['properties[last_name]'] = last_name
         if title: kwargs['properties[title]'] = title
@@ -97,28 +97,28 @@ class UsercycleAPI(object):
         if referrer: kwargs['properties[referrer]'] = referrer
         if campaign_source: kwargs['properties[campaign_source]'] = campaign_source
         if search_terms: kwargs['properties[search_terms]'] = search_terms
-                
+
         return self.post_request("/events.json",identity, action, occurred_at=occurred_at, properties=kwargs)
-    
+
     def activated(self, identity, occurred_at=None, **kwargs):
-        action = 'activated'        
+        action = 'activated'
         return self.post_request("/events.json",identity, action, occurred_at=occurred_at, properties=kwargs)
-    
+
     def came_back(self, identity, occurred_at=None, **kwargs):
         action= 'came_back'
         return self.post_request("/events.json", identity, action, occurred_at=occurred_at, properties=kwargs)
-   
+
     # FIXME
     def purchased(self, identity, revenue_amount=None, occurred_at=None, **kwargs):
-        action = 'purchased'        
+        action = 'purchased'
         if revenue_amount: kwargs['revenue_amount'] = revenue_amount
-        
+
         return self.post_request("/events.json", identity, action, occurred_at=occurred_at, properties=kwargs)
 
     def referred(self, identity, occurred_at=None, **kwargs):
         action = 'referred'
         return self.post_request("/events.json", identity, action, occurred_at=occurred_at, properties=kwargs)
-    
+
     def canceled(self, identity, reason=None, occurred_at=None, **kwargs):
         action = 'canceled'
         if reason: kwargs['reason'] = reason
@@ -137,12 +137,12 @@ class UsercycleAPI(object):
                 fmt = '%Y-%m-%d %H:%M:%S UTC'
                 assert datetime.datetime.strptime(occurred_at, fmt)
                 post_args['occurred_at'] = occurred_at
-            
+
             url = protocol + "://" + api_host + "/api/v%s" % version + "%s" % path
             headers = {
                 "X-Usercycle-API-Key":self.access_token,
                 "Accept":"application/json",
-                }            
+                }
             if DEBUG:
                 print 'url=%s' % url
                 print 'post_args=%s' % post_args
@@ -151,8 +151,8 @@ class UsercycleAPI(object):
             r = requests.post(url, data=post_args, headers=headers)
             #r = requests.post(url, data=json.dumps(post_args), headers=headers)
             response = _parse_json(r.text)
-            if DEBUG: 
-                print response 
+            if DEBUG:
+                print response
                 pprint(r.headers)
             r.raise_for_status()
             return response
@@ -182,16 +182,16 @@ class UsercycleAPI(object):
         if self.access_token:
             get_args = params
             get_args['api_key'] = self.access_token
-            if properties: 
+            if properties:
                 get_args['properties'] = properties
-            
+
             #url = protocol + "://" + api_host + "/api/v%s" % version + "%s" % path
             url = base_url + path
             if DEBUG: print url
             headers = {
                 "X-Usercycle-API-Key":self.access_token,
                 "Accept":"application/json",
-                }            
+                }
             try:
                 r = requests.get(url, params=get_args, headers=headers)
                 r.raise_for_status()
@@ -203,3 +203,12 @@ class UsercycleAPI(object):
                 raise UsercycleError(r.status_code, r.text)
         else:
             raise ValueError("missing access_token")
+
+    def set_event(self, event_name, identity, occurred_at=None, **kwargs):
+        """
+        This method allows you to set whichever event you want. For instance, is useful
+        for posting subfunnel events.
+        """
+        if not event_name:
+            raise ValueError('An event name must be provided.')
+        return self.post_request("/events.json", identity, event_name, occurred_at=occurred_at, properties=kwargs)
