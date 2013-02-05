@@ -1,8 +1,8 @@
 import datetime
+import logging
 import requests
-from pprint import pprint
 
-DEBUG = False
+LOGGER = logging.getLogger(__name__)
 
 # Find a JSON parser
 try:
@@ -22,7 +22,6 @@ protocol = "http"
 api_host = "api.usercycle.com"
 base_url = protocol + '://' + api_host + '/api/v' + version
 
-USERCYCLE_ACCESS_TOKEN = "REPLACE_WITH_YOUR_TOKEN"
 
 class UsercycleError(Exception):
     """
@@ -45,7 +44,7 @@ class UsercycleError(Exception):
             406:NotAcceptable,
             500:ServerError,
         }
-        if DEBUG: print code, text
+        LOGGER.debug(code, text)
         raise errors.get(int(code), UnknownError)(text)
 
 class ResourceInvalid(Exception): pass
@@ -62,10 +61,9 @@ class UsercycleAPI(object):
     Client library for the USERCycle API
     """
     def __init__(self, access_token=None):
-        if access_token:
-            self.access_token = access_token
-        else:
-            self.access_token = USERCYCLE_ACCESS_TOKEN
+        if not access_token:
+            raise ValueError('An access token MUST be provided.')
+        self.access_token = access_token
 
     def signup(self,
                identity,
@@ -85,18 +83,18 @@ class UsercycleAPI(object):
                **kwargs):
         action = "signed_up"
 
-        if first_name: kwargs['properties[first_name]'] = first_name
-        if last_name: kwargs['properties[last_name]'] = last_name
-        if title: kwargs['properties[title]'] = title
-        if company: kwargs['properties[company]'] = company
-        if email: kwargs['properties[email]'] = email
-        if phone: kwargs['properties[phone]'] = phone
-        if twitter: kwargs['properties[twitter]'] = twitter
-        if facebook: kwargs['properties[facebook]'] = facebook
-        if plan_name: kwargs['properties[plan_name]'] = plan_name
-        if referrer: kwargs['properties[referrer]'] = referrer
-        if campaign_source: kwargs['properties[campaign_source]'] = campaign_source
-        if search_terms: kwargs['properties[search_terms]'] = search_terms
+        if first_name: kwargs['first_name'] = first_name
+        if last_name: kwargs['last_name'] = last_name
+        if title: kwargs['title'] = title
+        if company: kwargs['company'] = company
+        if email: kwargs['email'] = email
+        if phone: kwargs['phone'] = phone
+        if twitter: kwargs['twitter'] = twitter
+        if facebook: kwargs['facebook'] = facebook
+        if plan_name: kwargs['plan_name'] = plan_name
+        if referrer: kwargs['referrer'] = referrer
+        if campaign_source: kwargs['campaign_source'] = campaign_source
+        if search_terms: kwargs['search_terms'] = search_terms
 
         return self.post_request("/events.json",identity, action, occurred_at=occurred_at, properties=kwargs)
 
@@ -131,7 +129,8 @@ class UsercycleAPI(object):
                 "action_name":action_name,
             }
             for k,v in properties.iteritems():
-                post_args[k] = v
+                post_args['properties[{prop_name}]'.format(prop_name=k)] = v
+
             if occurred_at:
                 # VALID FORMAT AS OF 4/18/12
                 fmt = '%Y-%m-%d %H:%M:%S UTC'
@@ -143,17 +142,17 @@ class UsercycleAPI(object):
                 "X-Usercycle-API-Key":self.access_token,
                 "Accept":"application/json",
                 }
-            if DEBUG:
-                print 'url=%s' % url
-                print 'post_args=%s' % post_args
-                print 'headers=%s' % headers
-                print 'requests.post(url, data=post_args, headers=headers)'
+            LOGGER.debug('url={url} - post_args={post_args} - headers={headers}'.format(
+                    url=url,
+                    post_args=post_args,
+                    headers=headers
+                )
+            )
             r = requests.post(url, data=post_args, headers=headers)
             #r = requests.post(url, data=json.dumps(post_args), headers=headers)
             response = _parse_json(r.text)
-            if DEBUG:
-                print response
-                pprint(r.headers)
+            LOGGER.debug(response)
+            LOGGER.debug(r.headers)
             r.raise_for_status()
             return response
         else:
@@ -187,7 +186,7 @@ class UsercycleAPI(object):
 
             #url = protocol + "://" + api_host + "/api/v%s" % version + "%s" % path
             url = base_url + path
-            if DEBUG: print url
+            LOGGER.debug(url)
             headers = {
                 "X-Usercycle-API-Key":self.access_token,
                 "Accept":"application/json",
@@ -198,7 +197,7 @@ class UsercycleAPI(object):
                 response = _parse_json(r.text)
                 return response
             except requests.HTTPError, e:
-                if DEBUG: print r, e
+                LOGGER.debug(r, e)
                 #raise UsercycleError(e)
                 raise UsercycleError(r.status_code, r.text)
         else:
@@ -211,4 +210,5 @@ class UsercycleAPI(object):
         """
         if not event_name:
             raise ValueError('An event name must be provided.')
+        LOGGER.debug(kwargs)
         return self.post_request("/events.json", identity, event_name, occurred_at=occurred_at, properties=kwargs)
