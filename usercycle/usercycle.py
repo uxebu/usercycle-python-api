@@ -132,9 +132,15 @@ class UsercycleAPI(object):
                 post_args['properties[{prop_name}]'.format(prop_name=k)] = v
 
             if occurred_at:
-                # VALID FORMAT AS OF 4/18/12
                 fmt = '%Y-%m-%d %H:%M:%S UTC'
-                assert datetime.datetime.strptime(occurred_at, fmt)
+                if isinstance(occurred_at, str) or isinstance(occurred_at, unicode):
+                    # VALID FORMAT AS OF 4/18/12
+                    assert datetime.datetime.strptime(occurred_at, fmt)
+                elif isinstance(occurred_at, datetime.datetime):
+                    occurred_at = occurred_at.strftime(fmt)
+                else:
+                    raise ValueError('ocurred_at parameter must be a datetime instance or an string formated {fmt}'.format(fmt=fmt))
+
                 post_args['occurred_at'] = occurred_at
 
             url = protocol + "://" + api_host + "/api/v%s" % version + "%s" % path
