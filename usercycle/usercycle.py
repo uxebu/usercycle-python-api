@@ -203,7 +203,7 @@ class UsercycleAPI(object):
                 response = _parse_json(r.text)
                 return response
             except requests.HTTPError, e:
-                LOGGER.debug(r, e)
+                LOGGER.debug('Req: {req}. Exc: {exc}.'.format(req=r, exc=e))
                 #raise UsercycleError(e)
                 raise UsercycleError(r.status_code, r.text)
         else:
